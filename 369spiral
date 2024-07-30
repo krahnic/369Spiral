@@ -1,0 +1,310 @@
+import java.util.LinkedList;
+
+int n = 10;
+float angle = 0;
+float speed = 0.05;
+ArrayList<PVector> particles = new ArrayList<PVector>();
+PGraphics blur;
+color[] colors = new color[4];
+float colorPhase = 0;
+ArrayList<Explosion> explosions = new ArrayList<Explosion>();
+float goldenRatio = 1.618033988749895f;
+float zoomFactor = 1;
+float heartbeatPhase = 0;
+LinkedList<Integer> fibonacciSequence = new LinkedList<Integer>();
+
+void setup() {
+  size(800, 800);
+  frameRate(60);
+  blur = createGraphics(width, height);
+  blur.beginDraw();
+  blur.background(0);
+  blur.endDraw();
+  
+  fibonacciSequence.add(1);
+  fibonacciSequence.add(1);
+}
+
+void draw() {
+  // Update colors and effects
+  updateColors();
+  updateZoom();
+  updateHeartbeat();
+  updateFibonacci();
+  
+  // Dynamic background
+  background(0);
+  drawDynamicBackground();
+  
+  // Motion blur effect
+  blur.beginDraw();
+  blur.push();
+  blur.translate(width / 2, height / 2);
+  blur.scale(zoomFactor);
+  blur.noStroke();
+  blur.fill(0, 10);
+  blur.rect(-width / 2, -height / 2, width, height);
+  
+  // Draw sacred geometry
+  drawSacredGeometry(blur);
+  
+  // Draw shapes for 3, 6, and 9
+  drawShape(blur, colors[0], angle, 3, 100); // Triangle for 3
+  drawShape(blur, colors[1], -angle * 0.8, 6, 150); // Hexagon for 6
+  drawShape(blur, colors[2], angle * 1.2, 9, 200); // Nonagon for 9
+  
+  // Draw dual rotating golden spirals
+  drawGoldenSpiral(blur, true, angle);  // Clockwise
+  drawGoldenSpiral(blur, false, -angle);  // Counterclockwise
+  
+  // Draw oscillating circle on blur layer
+  blur.stroke(lerpColor(colors[0], colors[2], sin(colorPhase) * 0.5 + 0.5));
+  blur.noFill();
+  float oscillatingRadius = (100 + 20 * sin(millis() * 0.002)) * (1 + 0.1 * sin(heartbeatPhase));
+  blur.ellipse(0, 0, oscillatingRadius * 2, oscillatingRadius * 2);
+  
+  blur.pop();
+  blur.endDraw();
+
+  // Display blur layer
+  image(blur, 0, 0);
+
+  // Particle system
+  updateParticles();
+  displayParticles();
+
+  // Update and display explosions
+  for (int i = explosions.size() - 1; i >= 0; i--) {
+    Explosion e = explosions.get(i);
+    e.update();
+    e.display();
+    if (e.isDead()) {
+      explosions.remove(i);
+    }
+  }
+
+  // Display Fibonacci sequence
+  displayFibonacci();
+
+  // Increase the angle for rotation
+  angle += speed;
+  colorPhase += 0.02;
+  heartbeatPhase += 0.1;
+}
+
+void updateColors() {
+  float t = millis() * 0.001;
+  colors[0] = color(255, 0, 0); // Red for 3
+  colors[1] = color(0, 255, 0); // Green for 6
+  colors[2] = color(0, 0, 255); // Blue for 9
+  colors[3] = color(255, 165, 0); // Orange for balance
+}
+
+void updateZoom() {
+  zoomFactor = 1 + 0.1 * sin(millis() * 0.001);
+}
+
+void updateHeartbeat() {
+  heartbeatPhase += 0.1;
+  if (heartbeatPhase > TWO_PI) {
+    heartbeatPhase -= TWO_PI;
+  }
+}
+
+void updateFibonacci() {
+  if (frameCount % 60 == 0) {
+    int last = fibonacciSequence.getLast();
+    int secondLast = fibonacciSequence.get(fibonacciSequence.size() - 2);
+    fibonacciSequence.add(last + secondLast);
+    if (fibonacciSequence.size() > 10) {
+      fibonacciSequence.removeFirst();
+    }
+  }
+}
+
+void drawShape(PGraphics pg, color c, float ang, int sides, float size) {
+  pg.stroke(c);
+  pg.noFill();
+  pg.pushMatrix();
+  pg.rotate(ang);
+  pg.beginShape();
+  for (int i = 0; i < sides; i++) {
+    float x = size * cos(TWO_PI / sides * i);
+    float y = size * sin(TWO_PI / sides * i);
+    pg.vertex(x, y);
+  }
+  pg.endShape(CLOSE);
+  pg.popMatrix();
+}
+
+void drawGoldenSpiral(PGraphics pg, boolean clockwise, float rotationAngle) {
+  pg.stroke(255, 215, 0, 100);
+  pg.noFill();
+  pg.pushMatrix();
+  pg.rotate(rotationAngle);
+  pg.beginShape();
+  float theta = 0;
+  for (int i = 0; i < 360; i++) {
+    float r = pow(goldenRatio, theta / (PI/2)) * 2;
+    float x = r * cos(theta);
+    float y = r * sin(theta);
+    pg.vertex(x, y);
+    theta += clockwise ? 0.1 : -0.1; // Change direction based on chirality
+  }
+  pg.endShape();
+  pg.popMatrix();
+}
+
+void drawDynamicBackground() {
+  for (int i = 0; i < 10; i++) {
+    stroke(lerpColor(color(0, 0, 255), color(255, 0, 255), (float)i / 10));
+    strokeWeight(2);
+    noFill();
+    ellipse(width / 2, height / 2, 600 - i * 60, 600 - i * 60);
+  }
+}
+
+void drawSacredGeometry(PGraphics pg) {
+  pg.stroke(255, 100);
+  pg.noFill();
+  
+  // Flower of Life pattern
+  for (int i = 0; i < 6; i++) {
+    pg.pushMatrix();
+    pg.rotate(i * PI / 3);
+    pg.ellipse(50, 0, 100, 100);
+    pg.popMatrix();
+  }
+  
+  // Rotating Metatron's Cube
+  pg.pushMatrix();
+  pg.rotate(angle * 0.1);
+  pg.beginShape();
+  for (int i = 0; i < 6; i++) {
+    float angle = i * TWO_PI / 6;
+    pg.vertex(cos(angle) * 100, sin(angle) * 100);
+  }
+  pg.endShape(CLOSE);
+  pg.popMatrix();
+}
+
+void updateParticles() {
+  if (frameCount % 2 == 0) {
+    float angle = random(TWO_PI);
+    float radius = random(50, 150);
+    particles.add(new PVector(cos(angle) * radius, sin(angle) * radius));
+  }
+  
+  for (int i = particles.size() - 1; i >= 0; i--) {
+    PVector p = particles.get(i);
+    p.mult(0.99);
+    if (p.mag() < 1) {
+      particles.remove(i);
+    }
+  }
+}
+
+void displayParticles() {
+  push();
+  translate(width / 2, height / 2);
+  for (PVector p : particles) {
+    float alpha = map(p.mag(), 0, 150, 255, 0);
+    stroke(lerpColor(colors[0], colors[2], p.heading() / TWO_PI), alpha);
+    strokeWeight(2); // Increase the stroke weight for better visibility
+    point(p.x, p.y);
+  }
+  pop();
+}
+
+void displayFibonacci() {
+  fill(255);
+  textAlign(LEFT, TOP);
+  textSize(16);
+  String fibString = "Fibonacci: " + fibonacciSequence.toString();
+  text(fibString, 10, 10);
+}
+
+void mousePressed() {
+  // Adjust explosion location to correct coordinates
+  explosions.add(new Explosion(mouseX - width / 2, mouseY - height / 2));
+}
+
+class Explosion {
+  float x, y;
+  ArrayList<Particle> particles;
+  int lifespan = 60;
+  
+  Explosion(float x, float y) {
+    this.x = x;
+    this.y = y;
+    particles = new ArrayList<Particle>();
+    for (int i = 0; i < 200; i++) { // Increase the number of particles
+      float angle = random(TWO_PI);
+      float speed = random(3, 10); // Increase the speed of particles
+      particles.add(new Particle(x, y, cos(angle) * speed, sin(angle) * speed));
+    }
+  }
+  
+  void update() {
+    for (Particle p : particles) {
+      p.update();
+    }
+    lifespan--;
+  }
+  
+  void display() {
+    push();
+    translate(x, y);
+    for (Particle p : particles) {
+      p.display();
+    }
+    pop();
+  }
+  
+  boolean isDead() {
+    return lifespan <= 0;
+  }
+}
+
+class Particle {
+  float x, y;
+  float vx, vy;
+  color c;
+  float lifespan;
+  float size;
+  
+  Particle(float x, float y, float vx, float vy) {
+    this.x = x;
+    this.y = y;
+    this.vx = vx;
+    this.vy = vy;
+    this.c = color(255, random(150, 255), 0); // Fire-like colors
+    this.lifespan = 255;
+    this.size = 8;
+  }
+  
+  void update() {
+    PVector center = new PVector(0, 0);
+    PVector pos = new PVector(x, y);
+    PVector force = PVector.sub(center, pos);
+    force.normalize();
+    force.mult(0.1);
+    
+    vx += force.x;
+    vy += force.y;
+    
+    x += vx;
+    y += vy;
+    vx *= 0.95; // Damping to simulate friction
+    vy *= 0.95; // Damping to simulate friction
+    vy += 0.1; // Gravity effect
+    lifespan -= 5;
+    size *= 0.95; // Shrink over time
+  }
+  
+  void display() {
+    noStroke();
+    fill(c, lifespan);
+    ellipse(x, y, size, size); // Shrinking particles for better visibility
+  }
+}
